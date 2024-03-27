@@ -1,241 +1,126 @@
-import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.PriorityQueue;
 
 public class Main {
 
     public static void main(String[] args){
 
-        Scanner scanner = new Scanner(System.in);
-        ArrayList<Double> list1 = new ArrayList<>();
-        ArrayList<Integer> list2 = new ArrayList<>();
-        ArrayList<String> list3 = new ArrayList<>();
-        Double r; Integer c; String x;
-        Double rr=0.0; //previous time
+        Press press = new Press();
+        Drill drill = new Drill();
+        PriorityQueue<Event> pq = new PriorityQueue<>();
+        pq.add(new Event(new Time(3,0),3,-1,true,false,false,false,false,false));
+        pq.add(new Event(new Time(2,0),2,-1,true,false,false,false,false,false));
+        pq.add(new Event(new Time(Double.POSITIVE_INFINITY,0),-1,-1,false,true,false,false,false,false));
+        pq.add(new Event(new Time(Double.POSITIVE_INFINITY,0),-1,-1,false,false,false,false,true,false));
 
-        System.out.println("Privét");
+        Event prevEvent = null;
 
-        do{
-            x= scanner.nextLine();
-            r = Double.valueOf(x.substring(0,x.indexOf(',')));
-            //x = x.substring(x.indexOf(','));
-            c = Integer.valueOf(x.substring(1+x.indexOf(','),x.length()-2));
-            x = x.substring(x.length()-1);
-
-            //System.out.print("enter real time:");
-            //r= scanner.nextDouble();
-            list1.add(r);
-            //System.out.print("enter discrete time:");
-            //c= scanner.nextInt();
-            list2.add(c);
-            //System.out.print("enter coin:");
-            //x= scanner.nextLine(); x= scanner.nextLine();
-            list3.add(x);
-        }while(r >= 0);
-        list1.remove(list1.size()-1);
-        list2.remove(list2.size()-1);
-        list3.remove(list3.size()-1);
-
-
-        int q=0; int d=0; int n=0; int v=0; double e=0; double alarm1=999999999; int alarm2=0;
-        boolean cc=false; boolean ccc = false; double rrr=0.0; String xx = "q";
-
-        while(!list1.isEmpty())
+        while(!pq.isEmpty())
         {
-            if(list1.get(0)<alarm1 || (list1.get(0)==alarm1 && list2.get(0)<alarm2)) //external
-            {
-                r= list1.get(0); c= list2.get(0); x= list3.get(0);
-                e = r-rr;
-                //call delta external
-                if(x.equals("q")){q++; v+=25;alarm1 = r + 2.0; alarm2=0;}
-                if(x.equals("d")){d++; v+=10;alarm1 = r + 2.0; alarm2=0;}
-                if(x.equals("n")){n++; v+=5;alarm1 = r + 2.0; alarm2=0;}
-                if(x.equals("c")){
-                    cc=true; alarm1 = r; alarm2++;
-                    if(xx.equals("q")||xx.equals("d")||xx.equals("n")){rrr = rr;}
-                }
-                //alarm1 = r + 2.0; alarm2=0;
-                list1.remove(0); list2.remove(0); list3.remove(0);
-                rr=r; xx=x;
+            boolean exists;
+            Event event = pq.poll();
+
+            if(event.t.r<Double.POSITIVE_INFINITY){
+            System.out.println(event.t.r);
+
+            //if external and internal, confluent
+            if(event.pressExt && event.pressInt){event.pressExt=false; event.pressInt=false; event.pressCon=true;}
+            if(event.drillExt && event.drillInt){event.drillExt=false; event.drillInt=false; event.drillCon=true;}
+
+            //time
+            Time t = event.t;
+            //elapsed time
+            double e = t.r; if(prevEvent!=null){e -= prevEvent.t.r;}
+            //input
+            int x = event.x; int xx = event.xx;
+
+            //call all applicable in following order
+
+            //lambda press
+            if(event.pressInt||event.pressCon){
+                xx = press.lambda();
             }
-            else if(list1.get(0)>alarm1 || (list1.get(0)==alarm1 && list2.get(0)>alarm2)) //internal
-            {
-                r=alarm1; c=alarm2;
-                //e = r-rr;
-
-                //lambda
-                System.out.print("\n "+ r + "," + c + "    Λ i: ");
-
-                if(cc){
-
-                    System.out.print("c");
-                    //delta
-                    e = r-rrr;
-                    cc=false;
-                    alarm1 = r + 2.0 - e; alarm2=0;
-
-
-                }else if(ccc){
-
-                    System.out.print("c");
-                    //delta
-                    ccc=false;
-                    alarm1 = 999999999; alarm2=0;
-
-                }else{
-
-                int poop = v / 100;
-                for(int i=0;i<poop;i++){System.out.print("coffee ");}
-                poop = v % 100;
-                int qq=q; while(qq>0 && poop-25>=0){poop-=25; qq--; System.out.print("q");}
-                int dd=d; while(dd>0 && poop-10>=0){poop-=10; dd--; System.out.print("d");}
-                int nn=n; while(nn>0 && poop-5>=0){poop-=5; nn--; System.out.print("n");}
-                if(poop>0) System.out.print(" and that's all i got ");
-
-                //delta
-                e= r-rr;
-                poop = v % 100;
-                while(q>0 && poop-25>=0){v-=25; q--; poop=v%100;}
-                while(d>0 && poop-10>=0){v-=10; d--; poop=v%100;}
-                while(n>0 && poop-5>=0){v-=5; n--; poop=v%100;}
-                v=0;
-                alarm1 = 999999999; alarm2 = 0;
-
-                }rr=r; xx=x;
+            //lambda drill
+            if(event.drillInt||event.drillCon){
+                drill.lambda();
             }
-            else //confluent
-            {
-                //poop (imperative)
 
+            //coupling
+            if(event.pressInt||event.pressCon){
+                if(event.drillInt){event.drillInt=false;event.drillCon=true;}else{event.drillExt=true;}
+                //this is short for
+                //event.drillExt=true; if(event.drillInt){event.drillInt=false; event.drillExt=false; event.drillCon=true;}
+            }
 
-                r= list1.get(0); c= list2.get(0); x= list3.get(0);
-                e = r-rr;
+            //delta internal press
+            if(event.pressInt){
+                press.deltaInternal();
+                Time alarm = event.t.timeAdvance(new Time(press.s,0), press.p);
 
-                //lambda
-                System.out.print("\n "+ r + "," + c + "    Λ c: ");
+                //if already exists
+                exists=false;
+                for(Event eee : pq){if(eee.t.r==alarm.r && eee.t.c==alarm.c){eee.pressInt=true;exists=true;break;}}
+                if(!exists){pq.add(new Event(alarm,-1,-1,false,true,false,false,false,false));}
 
+            }
+            //delta internal drill
+            if(event.drillInt){
+                drill.deltaInternal();
+                Time alarm = event.t.timeAdvance(new Time(drill.s,0), drill.p);
 
-                //if(cc){System.out.print("c");} //not handled. just make not do deltalambda below.
+                //if already exists
+                exists=false;
+                for (Event eee:pq){if(eee.t.r==alarm.r && eee.t.c==alarm.c){eee.drillInt=true;exists=true;break;}}
+                if(!exists){pq.add(new Event(alarm,-1,-1,false,false,false,false,true,false));}
 
-                if(ccc){System.out.print("c");}
-                ccc=false;
+            }
+            //delta external press
+            if(event.pressExt){
+                press.deltaExternal(e,x);
+                Time alarm = event.t.timeAdvance(new Time(press.s,0), press.p);
 
+                //if already exists
+                exists=false;
+                for (Event eee:pq){if(eee.t.r==alarm.r && eee.t.c==alarm.c){eee.pressInt=true;exists=true;break;}}
+                if(!exists){pq.add(new Event(alarm,-1,-1,false,true,false,false,false,false));}
 
-                int poop = v / 100;
-                for(int i=0;i<poop;i++){System.out.print("coffee ");}
-                poop = v % 100;
-                int qq=q; while(qq>0 && poop-25>=0){poop-=25; qq--; System.out.print("q");}
-                int dd=d; while(dd>0 && poop-10>=0){poop-=10; dd--; System.out.print("d");}
-                int nn=n; while(nn>0 && poop-5>=0){poop-=5; nn--; System.out.print("n");}
-                if(poop>0) System.out.print(" and that's all i got ");
+            }
+            //delta external drill
+            if(event.drillExt){
+                drill.deltaExternal(e,xx);
+                Time alarm = event.t.timeAdvance(new Time(drill.s,0), drill.p);
 
-                //delta
-                poop = v % 100;
-                while(q>0 && poop-25>=0){v-=25; q--; poop=v%100;}
-                while(d>0 && poop-10>=0){v-=10; d--; poop=v%100;}
-                while(n>0 && poop-5>=0){v-=5; n--; poop=v%100;}
-                v=0;
-                if(x.equals("q")){q++; v+=25;alarm1 = r + 2.0; alarm2=0;}
-                if(x.equals("d")){d++; v+=10;alarm1 = r + 2.0; alarm2=0;}
-                if(x.equals("n")){n++; v+=5;alarm1 = r + 2.0; alarm2=0;}
-                if(x.equals("c")){
-                    ccc=true; alarm1 = r; alarm2++;
-                }
+                //if already exists
+                exists=false;
+                for (Event eee:pq){if(eee.t.r==alarm.r && eee.t.c==alarm.c){eee.drillInt=true;exists=true;break;}}
+                if(!exists){pq.add(new Event(alarm,-1,-1,false,false,false,false,true,false));}
 
-                //alarm1 = r + 2.0; alarm2=0;
-                list1.remove(0); list2.remove(0); list3.remove(0);
-                rr=r;xx=x;
+            }
+            //delta confluent press
+            if(event.pressCon){
+                press.deltaConfluent(e,x);
+                Time alarm = event.t.timeAdvance(new Time(press.s,0), press.p);
+
+                //if already exists
+                exists=false;
+                for (Event eee:pq){if(eee.t.r==alarm.r && eee.t.c==alarm.c){eee.pressInt=true;exists=true;break;}}
+                if(!exists){pq.add(new Event(alarm,-1,-1,false,true,false,false,false,false));}
+
+            }
+            //delta confluent drill
+            if(event.drillCon){
+                drill.deltaConfluent(e,xx);
+                Time alarm = event.t.timeAdvance(new Time(drill.s,0), drill.p);
+
+                //if already exists
+                exists=false;
+                for (Event eee:pq){if(eee.t.r==alarm.r && eee.t.c==alarm.c){eee.drillInt=true;exists=true;break;}}
+                if(!exists){pq.add(new Event(alarm,-1,-1,false,false,false,false,true,false));}
 
             }
 
+            }else{break;}
+            prevEvent = event;
         }
-
-        //final alarm clock(s)
-
-        while(alarm1<999999999){
-
-            r=alarm1; c=alarm2;
-            e = r-rr;
-
-            //lambda
-            System.out.print("\n "+ r + "," + c + "    Λ i: ");
-
-            if(cc){
-
-                System.out.print("c");
-                //delta
-                cc=false;
-                alarm1 = r + 2.0 - e; alarm2=0;
-
-
-            }else{
-
-            int poop = v / 100;
-            for(int i=0;i<poop;i++){System.out.print("coffee ");}
-            poop = v % 100;
-            int qq=q; while(qq>0 && poop-25>=0){poop-=25; qq--; System.out.print("q");}
-            int dd=d; while(dd>0 && poop-10>=0){poop-=10; dd--; System.out.print("d");}
-            int nn=n; while(nn>0 && poop-5>=0){poop-=5; nn--; System.out.print("n");}
-            if(poop>0) System.out.print(" and that's all i got ");
-
-            //delta
-            poop = v % 100;
-            while(q>0 && poop-25>=0){v-=25; q--; poop=v%100;}
-            while(d>0 && poop-10>=0){v-=10; d--; poop=v%100;}
-            while(n>0 && poop-5>=0){v-=5; n--; poop=v%100;}
-            v=0;
-            alarm1 = 999999999; alarm2 = 0;
-
-            }rr=r;
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     }
-
-
 }
 
-
-
-
-
-/*
-
-
-
-
-
-
-//call delta external
-                if(x.equals("q")){q++; v+=25;alarm1 = r + 2.0; alarm2=0;rr=r;}
-                        if(x.equals("d")){d++; v+=10;alarm1 = r + 2.0; alarm2=0;rr=r;}
-                        if(x.equals("n")){n++; v+=5;alarm1 = r + 2.0; alarm2=0;rr=r;}
-                        if(x.equals("c")){cc=true; alarm1 = r; alarm2++;}
-//alarm1 = r + 2.0; alarm2=0;
-
-                        if(cc){
-
-                        System.out.print("c");
-                        //delta
-                        cc=false;
-                        alarm1 = r + 2.0 - e; alarm2=0;
-
-
-                        }else{
-
-
-
- */
